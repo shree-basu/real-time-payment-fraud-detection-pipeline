@@ -11,6 +11,8 @@ class EnrichTransaction(beam.DoFn):
             record['hour_of_day'] = -1
             
         record['is_high_risk_country'] = record['country_code'] in HIGH_RISK_COUNTRIES
+        
+        record['has_ip_address'] = record.get('ip_address') is not None
         yield record 
 
     
