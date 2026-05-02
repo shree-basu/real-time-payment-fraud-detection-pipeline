@@ -1,0 +1,4 @@
+apache-beam[gcp]==2.53.0
+google-cloud-bigquery==3.13.0
+google-cloud-pubsub==2.18.4
+pytest==7.4.3
