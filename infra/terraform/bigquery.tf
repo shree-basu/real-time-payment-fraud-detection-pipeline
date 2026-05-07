@@ -26,3 +26,19 @@ resource "google_bigquery_table" "raw_transactions"{
         {name = "processed_at" , type = "TIMESTAMP"}
         ])
 }
+
+resource "google_bigquery_table" "fraud_alerts"{
+    dataset_id = google_bigquery_dataset.fraud_detection.dataset_id
+    table_id = "fraud_alerts"
+    project = var.project_id
+    
+    schema = jsonencode([
+        {name = "transaction_id" , type = "STRING"},
+        {name = "account_id" , type = "STRING"},
+        {name = "amount" , type = "FLOAT"},
+        {name = "risk_score" , type = "INTEGER"},
+        {name = "fraud_signals" , type = "STRING"},
+        {name = "is_fraud_alert" , type = "BOOLEAN"},
+        {name = "processed_at" , type = "TIMESTAMP"}
+    ])
+}
