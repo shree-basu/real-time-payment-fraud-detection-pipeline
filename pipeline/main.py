@@ -39,3 +39,8 @@ def run():
             |"SerializeDLQ">>beam.Map(lambda x:json.dumps(x))
             |"WriteDLQ">>beam.io.WriteToText(DLQ_BUCKET,file_name_suffix=".json")
         )
+
+        enriched = (
+            validated.valid
+            |"EnrichedData">>beam.ParDo(EnrichTransaction())
+        )
