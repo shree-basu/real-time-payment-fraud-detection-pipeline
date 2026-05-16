@@ -30,3 +30,12 @@ def run():
         messages = p | "ReadFromPubSub" >>
         beam.io.ReadFromPubSub(topic=INPUT_TOPIC)
         
+        validated = (
+             messages
+             | "ValidateSchema" >>
+        beam.ParDO(ValidateTransaction()).with_outputs("valid", "invalid")
+        )
+        validated = (
+            |"SerializeDLQ">>beam.Map(lambda x:json.dumps(x))
+            |"WriteDLQ">>beam.io.WriteToText(DLQ_BUCKET,file_name_suffix=".json")
+        )
