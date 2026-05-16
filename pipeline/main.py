@@ -8,7 +8,7 @@ from pipeline.utils.bq_utils import RAW_SCHEMA, FRAUD_SCHEMA
 
 PROJECT = "your-project-id"
 REGION = "us-central1"
-INPUT_LOGIC = f"projects/{PROJECT}/topics/fraud-transactions"
+INPUT_TOPIC = f"projects/{PROJECT}/topics/fraud-transactions"
 DLQ_BUCKET = f"gs://{PROJECT}-dlq/invalid-transactions"
 RAW_TABLE = f"{PROJECT}: fraud_detection.raw_transactions"
 FRAUD_TABLE = f"{PROJECT}:fraud_detection.fraud_alerts"
@@ -25,3 +25,8 @@ def run():
         staging_location=f"gs://{PROJECT}-staging/dataflow",
     )
     options.view_as(StandardOptions).streaming = True
+
+    with beam.Pipeline(options=options) as p:
+        messages = p | "ReadFromPubSub" >>
+        beam.io.ReadFromPubSub(topic=INPUT_TOPIC)
+        
