@@ -32,7 +32,7 @@ def run():
         validated = (
              messages
              | "ValidateSchema" >>
-        beam.ParDO(ValidateTransaction()).with_outputs("valid", "invalid")
+        beam.ParDo(ValidateTransaction()).with_outputs("valid", "invalid")
         )
         (
         validated.invalid
@@ -50,3 +50,24 @@ def run():
             | "DetectFraud" >>
         beam.ParDo(DetectFraud()).with_outputs("fraud", "clean")
         )
+
+    (
+        detected.clean
+        | "WriteRawToBQ" >> WriteToBigQuery(
+            RAW_TABLE,
+            schema={"fields": RAW_SCHEMA},
+            write_disposition=BigQueryDisposition.WRITE_APPEND,
+            create_disposition=BigQueryDisposition.CREATE_IF_NEEDED,
+        )
+    )
+    (
+        detected.fraud
+        | "WriteFraudToBQ" >> WriteToBigQuery(
+            FRAUD_TABLE,
+            schema={"fields": FRAUD_SCHEMA},
+            write_disposition=BigQueryDisposition.WRITE_APPEND,
+            create_disposition=BigQueryDisposition.CREATE_IF_NEEDED,
+        )
+    )
+if __name__ == "__main__":
+    run()
