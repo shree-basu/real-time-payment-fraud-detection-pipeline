@@ -27,20 +27,26 @@ def run():
     options.view_as(StandardOptions).streaming = True
 
     with beam.Pipeline(options=options) as p:
-        messages = p | "ReadFromPubSub" >>
-        beam.io.ReadFromPubSub(topic=INPUT_TOPIC)
+        messages = p | "ReadFromPubSub" >> beam.io.ReadFromPubSub(topic=INPUT_TOPIC)
         
         validated = (
              messages
              | "ValidateSchema" >>
         beam.ParDO(ValidateTransaction()).with_outputs("valid", "invalid")
         )
-        validated = (
-            |"SerializeDLQ">>beam.Map(lambda x:json.dumps(x))
-            |"WriteDLQ">>beam.io.WriteToText(DLQ_BUCKET,file_name_suffix=".json")
+        (
+        validated.invalid
+            | "SerializeDLQ">> beam.Map(lambda x: json.dumps(x))
+            | "WriteDLQ">> beam.io.WriteToText(DLQ_BUCKET,file_name_suffix=".json")
         )
 
         enriched = (
             validated.valid
             |"EnrichedData">>beam.ParDo(EnrichTransaction())
+        )
+
+        detected = (
+            enriched
+            | "DetectFraud" >>
+        beam.ParDo(DetectFraud()).with_outputs("fraud", "clean")
         )
