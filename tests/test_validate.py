@@ -20,3 +20,25 @@ def test_missing_fields_goes_to_invalid():
             | beam.ParDo(ValidateTransaction()).with_outputs("valid","invalid")
         )
         assert_that(result.invalid, is_not_empty())
+
+def test_invalid_amount_goes_to_invalid():
+    record = {
+        "transaction_id": "T002",
+        "account_id": "ACC123",
+        "amount": -50.0,
+        "currency": "USD",
+        "merchant_category": "grocery",
+        "timestamp": "2024-01-01T00:00:00Z",
+        "country_code": "US",
+        "is_online": False
+    }
+    raw = json.dumps(record).encode("utf-8")
+
+    with TestPipeline as p:
+        result = (
+            p
+            | beam.Create([raw])
+            | beam.ParDo(ValidateTransaction()).with_outputs("valid","invalid")
+        )
+        assert_that(result.invalid, is_not_empty())
+    
