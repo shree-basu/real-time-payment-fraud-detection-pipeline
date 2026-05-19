@@ -22,3 +22,22 @@ def test_high_amount_triggers_fraud():
             | beam.ParDo(DetectFraud()).with_outputs("fraud", "clean")
         )
         assert_that(result.fraud, is_not_empty())
+
+def test_clean_transactions_goes_to_clean():
+    record = {
+        "transaction_id": "TOO2",
+        "account_id": "ACC456",
+        "amount": 25.0,
+        "currency": "USD",
+        "merchant_category": "grocery",
+        "timestamp": "2024-01-01T00:00:00Z",
+        "country_code": "US",
+        "is_online": False
+    }
+    with TestPipeline as p:
+        result = (
+            p
+            | beam.Create([record])
+            | beam.ParDo(DetectFraud()).with_outputs("fraud","clean")
+        )
+        assert_that(result.clean, is_not_empty())
