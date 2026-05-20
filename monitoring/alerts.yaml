@@ -1,0 +1,13 @@
+alerts:
+  - name: dataflow-job-not-running
+    display_name: "Fraud Pipeline - Dataflow Job Not Running"
+    conditions:
+      - display_name: "Dataflow job stopped"
+        condition_threshold:
+          filter: 'metric.type="dataflow.googleapis.com/job/is_failed"'
+          comaparison: COMPARISION_GT
+          threshold_value: 0
+          duration: 60s
+    notification_channels:[]
+    documentation:
+      content: "The fraud detection Dataflow job had stopped. Investigate immediately"
