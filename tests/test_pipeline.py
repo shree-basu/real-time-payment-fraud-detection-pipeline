@@ -5,3 +5,32 @@ from pipeline.transforms.validate import ValidateTransaction
 from pipeline.transforms.enrich import EnrichTransaction
 from pipeline.transforms.detect import DetectFraud
 import json
+
+def test_fraud_transaction_reaches_fraud_output():
+    record = {
+        "transaction_id": "T001",
+        "account_id": "ACC123",
+        "amount": 9999.99,
+        "currency": "USD",
+        "merchant_category": "electronics",
+        "timestamp": "2024-01-01T00:00:00Z",
+        "country_code": "NG",
+        "is_online": False,
+    }
+    raw = json.dumps(record).encode("utf-8")
+
+    with TestPipeline() as p:
+        validated = (
+            p
+            | beam.Create([raw])
+            | beam.ParDo(ValidateTransaction()).with_outputs("valid","invalid")
+        )
+        enriched = (
+            validated.valid
+            | beam.ParDo(EnrichTransaction())
+        )
+        result = (
+            enriched
+            | beam.ParDo(DetectFraud()).with_outputs("fraud","clean")
+        )
+        assert_that(result.fraud, is_not_empty())
