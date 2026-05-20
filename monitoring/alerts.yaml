@@ -11,3 +11,16 @@ alerts:
     notification_channels:[]
     documentation:
       content: "The fraud detection Dataflow job had stopped. Investigate immediately"
+
+  - name: high-fraud-rate
+    display_name: "Fraud Pipeline - High Fraud Rate Detection"
+    conditions:
+      - display_name: "Fraud alerts spiking"
+        condition_threshold:
+          filter: 'metric.type="custom.googleapis.com/fraud_alert_count"'
+          comaparison: COMPARISION_GT
+          threshold_value: 100
+          duration: 300s
+    notification_channels: []
+    documentation:
+      content: "Fraud alert rate is unusually high. Check for model errors or coordinated attack."
