@@ -34,3 +34,45 @@ def test_fraud_transaction_reaches_fraud_output():
             | beam.ParDo(DetectFraud()).with_outputs("fraud","clean")
         )
         assert_that(result.fraud, is_not_empty())
+
+def test_clean_transaction_reaches_clean_output():
+    record = {
+        "transaction_id": "T002",
+        "account_id": "ACC456",
+        "amount": 25.0,
+        "currency": "USD",
+        "merchant_category": "grocery",
+        "timestamp": "2024-01-01T00:00:00Z",
+        "country_code": "US",
+        "is_online": False,
+    }
+    raw = json.dumps(record).encode("utf-8")
+
+    with TestPipeline() as p:
+        validated = (
+            p
+            | beam.Create([raw])
+            | beam.ParDo(ValidateTransaction()).with_outputs("valid", "invalid")
+        )
+        enriched = (
+            validated.valid
+            | beam.ParDo(EnrichTransaction())
+        )
+        result = (
+            enriched
+            | beam.ParDo(DetectFraud()).with_outputs("fraud","clean")
+        )
+        assert_that(result.clean, is_not_empty())
+
+
+
+
+
+
+
+
+
+
+
+
+
