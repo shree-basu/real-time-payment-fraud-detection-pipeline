@@ -1,5 +1,5 @@
 import apache_beam as beam
-from apache_beam.testing.test_pipeline import TestPipeline
+from apache_beam.testing.test_pipeline import TestPipeline as _TestPipeline
 from apache_beam.testing.util import assert_that, is_not_empty
 from pipeline.transforms.validate import ValidateTransaction
 from pipeline.transforms.enrich import EnrichTransaction
@@ -20,7 +20,7 @@ def test_fraud_transaction_reaches_fraud_output():
     }
     raw = json.dumps(record).encode("utf-8")
 
-    with TestPipeline() as p:
+    with _TestPipeline() as p:
         validated = (
             p
             | beam.Create([raw])
@@ -50,7 +50,7 @@ def test_clean_transaction_reaches_clean_output():
     }
     raw = json.dumps(record).encode("utf-8")
 
-    with TestPipeline() as p:
+    with _TestPipeline() as p:
         validated = (
             p
             | beam.Create([raw])
