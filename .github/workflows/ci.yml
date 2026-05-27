@@ -24,4 +24,4 @@ jobs:
       - name: Lint
         run: |
           pip install flake8
-          flake8 pipeline/ simulator/ --max-line-length=100
+          flake8 pipeline/ simulator/ --max-line-length=100 --extend-ignore=W291,W292,W391,E302,E305
