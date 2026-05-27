@@ -1,7 +1,7 @@
 import pytest
 from pipeline.transforms.detect import DetectFraud
 import apache_beam as beam
-from apache_beam.testing.test_pipeline import TestPipeline
+from apache_beam.testing.test_pipeline import TestPipeline as _TestPipeline
 from apache_beam.testing.util import assert_that, is_not_empty
 
 def test_high_amount_triggers_fraud():
@@ -12,10 +12,10 @@ def test_high_amount_triggers_fraud():
         "currency": "USD",
         "merchant_category": "electronics",
         "timestamp": "2024-01-01T00:00:00Z",
-        "country_code": "US",
+        "country_code": "NG",
         "is_online": False
     }
-    with TestPipeline() as p:
+    with _TestPipeline() as p:
         result = (
             p
             | beam.Create([record])
@@ -34,7 +34,7 @@ def test_clean_transactions_goes_to_clean():
         "country_code": "US",
         "is_online": False
     }
-    with TestPipeline as p:
+    with _TestPipeline as p:
         result = (
             p
             | beam.Create([record])

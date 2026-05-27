@@ -1,6 +1,6 @@
 import pytest
 import apache_beam as beam
-from apache_beam.testing.test_pipeline import TestPipeline
+from apache_beam.testing.test_pipeline import TestPipeline as _TestPipeline
 from apache_beam.testing.util import assert_that, is_not_empty
 from pipeline.transforms.validate import ValidateTransaction
 import json
@@ -13,7 +13,7 @@ def test_missing_fields_goes_to_invalid():
     }
     raw = json.dumps(record).encode("utf-8")
 
-    with TestPipeline as p:
+    with _TestPipeline as p:
         result = (
             p
             | beam.Create([raw])
@@ -34,7 +34,7 @@ def test_invalid_amount_goes_to_invalid():
     }
     raw = json.dumps(record).encode("utf-8")
 
-    with TestPipeline as p:
+    with _TestPipeline as p:
         result = (
             p
             | beam.Create([raw])
@@ -53,9 +53,9 @@ def test_valid_record_goes_to_valid():
         "country_code": "US",
         "is_online": False
     }
-    raw = json.dump(record).encode("utf-8")
+    raw = json.dumps(record).encode("utf-8")
 
-    with TestPipeline as p:
+    with _TestPipeline as p:
         result = (
             p
             | beam.Create([raw])
