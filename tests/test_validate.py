@@ -13,7 +13,7 @@ def test_missing_fields_goes_to_invalid():
     }
     raw = json.dumps(record).encode("utf-8")
 
-    with _TestPipeline as p:
+    with _TestPipeline() as p:
         result = (
             p
             | beam.Create([raw])
@@ -34,7 +34,7 @@ def test_invalid_amount_goes_to_invalid():
     }
     raw = json.dumps(record).encode("utf-8")
 
-    with _TestPipeline as p:
+    with _TestPipeline() as p:
         result = (
             p
             | beam.Create([raw])
@@ -55,7 +55,7 @@ def test_valid_record_goes_to_valid():
     }
     raw = json.dumps(record).encode("utf-8")
 
-    with _TestPipeline as p:
+    with _TestPipeline() as p:
         result = (
             p
             | beam.Create([raw])

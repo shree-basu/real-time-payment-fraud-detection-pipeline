@@ -34,7 +34,7 @@ def test_clean_transactions_goes_to_clean():
         "country_code": "US",
         "is_online": False
     }
-    with _TestPipeline as p:
+    with _TestPipeline() as p:
         result = (
             p
             | beam.Create([record])
