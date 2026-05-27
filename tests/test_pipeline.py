@@ -6,6 +6,7 @@ from pipeline.transforms.enrich import EnrichTransaction
 from pipeline.transforms.detect import DetectFraud
 import json
 
+
 def test_fraud_transaction_reaches_fraud_output():
     record = {
         "transaction_id": "T001",
@@ -23,7 +24,7 @@ def test_fraud_transaction_reaches_fraud_output():
         validated = (
             p
             | beam.Create([raw])
-            | beam.ParDo(ValidateTransaction()).with_outputs("valid","invalid")
+            | beam.ParDo(ValidateTransaction()).with_outputs("valid", "invalid")
         )
         enriched = (
             validated.valid
@@ -31,9 +32,10 @@ def test_fraud_transaction_reaches_fraud_output():
         )
         result = (
             enriched
-            | beam.ParDo(DetectFraud()).with_outputs("fraud","clean")
+            | beam.ParDo(DetectFraud()).with_outputs("fraud", "clean")
         )
         assert_that(result.fraud, is_not_empty())
+
 
 def test_clean_transaction_reaches_clean_output():
     record = {
@@ -60,19 +62,6 @@ def test_clean_transaction_reaches_clean_output():
         )
         result = (
             enriched
-            | beam.ParDo(DetectFraud()).with_outputs("fraud","clean")
+            | beam.ParDo(DetectFraud()).with_outputs("fraud", "clean")
         )
         assert_that(result.clean, is_not_empty())
-
-
-
-
-
-
-
-
-
-
-
-
-
