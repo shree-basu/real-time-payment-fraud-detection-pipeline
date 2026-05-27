@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 MERCHANTS = ["grocery", "electronics", "travel", "atm", "online_gaming"]
 COUNTRIES = ["IN", "US", "GB", "NG", "RU", "CN", "BR"]
 
+
 def generate_transaction():
     return {
         "transaction_id": str(uuid.uuid4()),
@@ -20,12 +21,13 @@ def generate_transaction():
         "ip_address": f"192.168.{random.randint(0,255)}.{random.randint(0,255)}"
     }
 
+
 def publish(n=100, delay=0.06):
     for _ in range(n):
         msg = generate_transaction()
-        print(f"Generated transaction: {msg['transaction_id']} | 
-              Amount: {msg['amount']} | Country: {msg['country_code']}")
+        print(json.dumps(msg))
         time.sleep(delay)
+
 
 if __name__ == "__main__":
     publish(n=1000)
