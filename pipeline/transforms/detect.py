@@ -1,10 +1,10 @@
 import apache_beam as beam
 from datetime import datetime, timezone
 
-# Rule-based fraud signals (extend with ML model later)
 HIGH_RISK_COUNTRIES = {"NG", "RU", "CN"}
 HIGH_AMOUNT_THRESHOLD = 5000.0
 SUSPICIOUS_MERCHANTS = {"atm", "online_gaming"}
+
 
 class DetectFraud(beam.DoFn):
     def process(self, record):
