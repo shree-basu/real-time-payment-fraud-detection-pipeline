@@ -1,0 +1,7 @@
+# Copy only for an intentionally authorized deployment. Defaults remain non-deploying.
+project_id              = "replace-with-explicit-project-id"
+region                  = "us-central1"
+bigquery_location       = "US"
+deployment_enabled      = false
+deployment_confirmation = ""
+enable_monitoring       = false
