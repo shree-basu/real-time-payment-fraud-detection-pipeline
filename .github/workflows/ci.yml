@@ -32,7 +32,7 @@ jobs:
       - name: Validate dependencies
         run: |
           python -m pip check
-          python -m piptools sync --dry-run requirements-lock.txt
+          python -m pip install --dry-run -r requirements-lock.txt
 
       - name: Lint and format check
         run: |
