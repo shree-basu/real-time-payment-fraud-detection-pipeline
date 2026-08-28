@@ -18,7 +18,7 @@ Three cases remain distinct:
 
 ## Event time, windows, and panes
 
-The source timestamp attribute supplies event time. Velocity is keyed by `account_id` and defaults to a five-minute sliding window every one minute. The trigger fires when the watermark passes the window end. Allowed lateness defaults to ten minutes, with a late firing after each accepted late element and accumulating mode.
+The source timestamp attribute supplies event time. Velocity is keyed by `(account_id, currency)` and defaults to a five-minute sliding window every one minute. The current contract accepts only USD, and the compound key independently prevents mixed-currency sums if the contract is extended later. The trigger fires when the watermark passes the window end. Allowed lateness defaults to ten minutes, with a late firing after each accepted late element and accumulating mode.
 
 - **On time:** arrives before the watermark passes the window end and contributes to the on-time pane.
 - **Late but allowed:** arrives after the on-time firing but before end plus allowed lateness; it creates another accumulating pane.

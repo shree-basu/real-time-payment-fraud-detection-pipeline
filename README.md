@@ -16,7 +16,7 @@ Normal repository activity cannot create GCP charges:
 - `DirectRunner` is the default and requires a local JSONL input;
 - Dataflow refuses to launch without complete cloud configuration and `--confirm_cloud_run=DATAFLOW`;
 - the simulator defaults to stdout and requires `--mode=pubsub --confirm-publish=PUBSUB` before constructing a publisher;
-- Terraform defaults to zero resources and requires both `deployment_enabled=true` and `deployment_confirmation="DEPLOY"`;
+- Terraform defaults to zero resources; both deployment gates must remain explicitly open while resources are managed, and protected resources block an accidental teardown plan;
 - CI rejects GCP authentication, `terraform apply`, and `gcloud dataflow` commands in workflows.
 
 Dataflow streaming jobs incur charges continuously while running. Merely viewing, cloning, testing, or keeping this public repository does not deploy anything. See [the runbook](docs/runbook.md) before any future authorized cloud use.
@@ -46,7 +46,7 @@ The cloud sinks use Beam's BigQuery Storage Write API path and route its failed-
 
 ## Core semantics
 
-- Payment amounts use `Decimal` internally and BigQuery `NUMERIC`, never binary `FLOAT`.
+- Payment amounts use `Decimal` internally and BigQuery `NUMERIC`, never binary `FLOAT`; the USD-only contract rejects rather than rounds unrepresentable scale.
 - Timestamps must be timezone-aware ISO-8601 and are normalized to UTC.
 - Pub/Sub payload and `transaction_id` / `event_timestamp` attributes must match.
 - Every valid transaction is enriched and scored before reaching raw history; fraud alerts are a subset.
@@ -59,7 +59,7 @@ See [streaming semantics](docs/streaming-semantics.md) for the exact deduplicati
 
 ## Safe local use
 
-Python 3.11–3.13 is supported. Apache Beam 2.75.0 is pinned; Google lists that SDK as supported for Dataflow at implementation time.
+Python 3.13 is the evidenced support target. Core tests run on Linux and Windows; the complete Java-expanded Storage Write API graph is constructed on Linux CI. Apache Beam 2.75.0 is pinned.
 
 ```bash
 python -m venv .venv
@@ -87,8 +87,8 @@ terraform validate
 
 | Status | Evidence |
 |---|---|
-| Implemented + locally tested | Contract, scoring, sink normalization, deterministic scenarios, DirectRunner validation, event-time aggregation, allowed-late pane, too-late exclusion |
-| Implemented + statically validated | Terraform resources/IAM/monitoring, provider lock, Python packaging, cloud-free CI, Dataflow/BigQuery graph configuration |
+| Implemented + locally/CI tested | Contract, `NUMERIC` boundaries, scoring, native sink normalization, deterministic scenarios, DirectRunner validation, event-time aggregation, allowed-late pane, too-late exclusion, complete non-submitted cloud graph construction |
+| Implemented + statically validated | Terraform resources/custom tracking-subscription IAM/monitoring, provider lock, shared BigQuery schemas, Python packaging, cloud-free CI |
 | Designed but not deployed | Pub/Sub source/quarantine, Dataflow runner, Storage Write API sinks, GCP monitoring policies |
 | Not evidenced | Authenticated GCP execution, production load, operational alerts, dashboards, SLA, latency, throughput, cost savings |
 

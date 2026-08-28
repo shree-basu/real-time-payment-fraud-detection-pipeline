@@ -29,12 +29,12 @@ variable "deployment_enabled" {
 }
 
 variable "deployment_confirmation" {
-  description = "Must equal DEPLOY when deployment_enabled is true."
+  description = "Durable guard that must remain DEPLOY while deployment_enabled is true."
   type        = string
   default     = ""
   validation {
     condition     = !var.deployment_enabled || var.deployment_confirmation == "DEPLOY"
-    error_message = "Set deployment_confirmation to DEPLOY only for an intentional cloud deployment."
+    error_message = "Keep deployment_confirmation set to DEPLOY while cloud resources are managed."
   }
 }
 

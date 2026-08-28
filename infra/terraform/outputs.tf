@@ -1,5 +1,5 @@
 output "deployment_gate_open" {
-  description = "True only when both deliberate deployment gates are supplied."
+  description = "True only while the durable resource switch is enabled."
   value       = local.deploy
 }
 

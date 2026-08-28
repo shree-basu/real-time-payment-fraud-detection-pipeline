@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 
 import apache_beam as beam
@@ -15,6 +15,7 @@ from apache_beam.options.pipeline_options import (
     StandardOptions,
 )
 from apache_beam.transforms.window import TimestampedValue
+from apache_beam.utils.timestamp import Timestamp
 
 from pipeline.transforms.detect import FraudRuleConfig, ScoreTransaction
 from pipeline.transforms.enrich import EnrichTransaction
@@ -155,6 +156,7 @@ def _write_bigquery(collection, *, table: str, schema: dict, use_at_least_once: 
         use_at_least_once=use_at_least_once,
         with_auto_sharding=True,
         triggering_frequency=5,
+        type_overrides={"DATE": date, "TIMESTAMP": Timestamp},
     )
 
 
@@ -226,8 +228,9 @@ def _attach_local_sinks(outputs, prefix: str) -> None:
         )
 
 
-def run(argv: list[str] | None = None):
-    pipeline_options = PipelineOptions(argv)
+def create_pipeline(pipeline_options: PipelineOptions) -> beam.Pipeline:
+    """Construct the selected local or cloud graph without submitting it."""
+
     standard = pipeline_options.view_as(StandardOptions)
     custom = pipeline_options.view_as(FraudPipelineOptions)
     cloud = pipeline_options.view_as(GoogleCloudOptions)
@@ -270,7 +273,11 @@ def run(argv: list[str] | None = None):
         _attach_cloud_sinks(outputs, custom)
     else:
         _attach_local_sinks(outputs, custom.local_output_prefix)
-    return pipeline.run()
+    return pipeline
+
+
+def run(argv: list[str] | None = None):
+    return create_pipeline(PipelineOptions(argv)).run()
 
 
 if __name__ == "__main__":

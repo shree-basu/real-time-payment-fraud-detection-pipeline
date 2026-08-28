@@ -6,8 +6,8 @@
 |---|---|---|
 | `transaction_id` | string | non-empty; also the Pub/Sub ID attribute |
 | `account_id` | string | non-empty |
-| `amount` | decimal-compatible JSON number/string | finite, positive, within BigQuery `NUMERIC`; normalized to nine decimal places internally |
-| `currency` | string | one of USD, EUR, GBP, INR |
+| `amount` | decimal-compatible JSON number/string | BigQuery `NUMERIC`: `1e-9` through `99999999999999999999999999999.999999999`; at most nine significant fractional digits |
+| `currency` | string | USD only; simulator and fraud thresholds are USD-denominated |
 | `merchant_category` | string | electronics, grocery, jewelry, retail, travel, or utilities |
 | `event_timestamp` | string | timezone-aware ISO-8601; normalized to UTC; also the Pub/Sub timestamp attribute |
 | `country_code` | string | two alphabetic characters, normalized uppercase |
@@ -15,6 +15,11 @@
 | `ip_address` | string or null | optional; a supplied string must be non-empty |
 
 Unknown input fields are not propagated. This avoids accidental schema drift into sinks.
+
+Amounts are never rounded at the contract boundary. Values with more than nine significant
+fractional digits, positive values below `1e-9`, and range overflow are quarantined as
+`INVALID_AMOUNT`. Accepted values are padded to scale nine under an explicit 38-digit decimal
+context, so Python's default 28-digit context cannot reject BigQuery's valid maximum.
 
 ## Invalid-event envelope
 

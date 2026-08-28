@@ -10,6 +10,7 @@ terraform {
 }
 
 provider "google" {
-  project = var.project_id
-  region  = var.region
+  project      = length(trimspace(var.project_id)) > 0 ? var.project_id : "no-deploy-validation"
+  region       = var.region
+  access_token = var.deployment_enabled ? null : "cloud-free-static-validation-not-a-credential"
 }

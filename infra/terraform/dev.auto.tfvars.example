@@ -1,4 +1,5 @@
 # Copy only for an intentionally authorized deployment. Defaults remain non-deploying.
+# Once applied, keep both gate values unchanged until a separately reviewed teardown.
 project_id              = "replace-with-explicit-project-id"
 region                  = "us-central1"
 bigquery_location       = "US"

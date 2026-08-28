@@ -1,5 +1,7 @@
 locals {
-  deploy = var.deployment_enabled && var.deployment_confirmation == "DEPLOY"
+  # Resource existence follows durable desired state, never the confirmation token.
+  # Clearing the token while enabled fails validation instead of planning destruction.
+  deploy = var.deployment_enabled
   required_apis = toset([
     "bigquery.googleapis.com",
     "bigquerystorage.googleapis.com",
@@ -138,6 +140,10 @@ resource "google_storage_bucket" "dataflow_artifacts" {
     }
   }
 
+  lifecycle {
+    prevent_destroy = true
+  }
+
   depends_on = [google_project_service.required]
 }
 
@@ -150,41 +156,15 @@ resource "google_bigquery_dataset" "fraud" {
   max_time_travel_hours      = 168
   labels                     = var.labels
   depends_on                 = [google_project_service.required]
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 locals {
-  transaction_schema = jsonencode([
-    { name = "transaction_id", type = "STRING", mode = "REQUIRED" },
-    { name = "account_id", type = "STRING", mode = "REQUIRED" },
-    { name = "amount", type = "NUMERIC", mode = "REQUIRED" },
-    { name = "currency", type = "STRING", mode = "REQUIRED" },
-    { name = "merchant_category", type = "STRING", mode = "REQUIRED" },
-    { name = "event_timestamp", type = "TIMESTAMP", mode = "REQUIRED" },
-    { name = "event_date", type = "DATE", mode = "REQUIRED" },
-    { name = "country_code", type = "STRING", mode = "REQUIRED" },
-    { name = "is_online", type = "BOOLEAN", mode = "REQUIRED" },
-    { name = "ip_address", type = "STRING", mode = "NULLABLE" },
-    { name = "hour_of_day", type = "INTEGER", mode = "REQUIRED" },
-    { name = "is_high_risk_country", type = "BOOLEAN", mode = "REQUIRED" },
-    { name = "has_ip_address", type = "BOOLEAN", mode = "REQUIRED" },
-    { name = "fraud_signals", type = "STRING", mode = "REPEATED" },
-    { name = "risk_score", type = "INTEGER", mode = "REQUIRED" },
-    { name = "is_fraud_alert", type = "BOOLEAN", mode = "REQUIRED" },
-    { name = "processed_at", type = "TIMESTAMP", mode = "REQUIRED" },
-  ])
-  velocity_schema = jsonencode([
-    { name = "account_id", type = "STRING", mode = "REQUIRED" },
-    { name = "window_start", type = "TIMESTAMP", mode = "REQUIRED" },
-    { name = "window_end", type = "TIMESTAMP", mode = "REQUIRED" },
-    { name = "window_date", type = "DATE", mode = "REQUIRED" },
-    { name = "pane_index", type = "INTEGER", mode = "REQUIRED" },
-    { name = "pane_timing", type = "STRING", mode = "REQUIRED" },
-    { name = "is_late", type = "BOOLEAN", mode = "REQUIRED" },
-    { name = "transaction_count", type = "INTEGER", mode = "REQUIRED" },
-    { name = "total_amount", type = "NUMERIC", mode = "REQUIRED" },
-    { name = "maximum_amount", type = "NUMERIC", mode = "REQUIRED" },
-    { name = "processed_at", type = "TIMESTAMP", mode = "REQUIRED" },
-  ])
+  transaction_schema = file("${path.module}/../../pipeline/schemas/bigquery_transaction.json")
+  velocity_schema    = file("${path.module}/../../pipeline/schemas/bigquery_velocity.json")
 }
 
 resource "google_bigquery_table" "raw_transactions" {
@@ -247,6 +227,32 @@ resource "google_service_account" "dataflow_worker" {
   depends_on   = [google_project_service.required]
 }
 
+resource "google_project_iam_custom_role" "tracking_subscription" {
+  count = local.deploy ? 1 : 0
+
+  project     = var.project_id
+  role_id     = "fraudTrackingSubscription"
+  title       = "Fraud Dataflow tracking subscription"
+  description = "Create, consume, and delete Dataflow event-time tracking subscriptions"
+  permissions = [
+    "pubsub.subscriptions.create",
+    "pubsub.subscriptions.consume",
+    "pubsub.subscriptions.delete",
+  ]
+  depends_on = [google_project_service.required]
+}
+
+resource "google_project_iam_custom_role" "tracking_topic_attachment" {
+  count = local.deploy ? 1 : 0
+
+  project     = var.project_id
+  role_id     = "fraudTrackingTopicAttach"
+  title       = "Fraud Dataflow tracking topic attachment"
+  description = "Attach the Dataflow event-time tracking subscription to the input topic"
+  permissions = ["pubsub.topics.attachSubscription"]
+  depends_on  = [google_project_service.required]
+}
+
 resource "google_project_iam_member" "worker_project_roles" {
   for_each = local.deploy ? local.worker_project_roles : toset([])
 
@@ -255,12 +261,20 @@ resource "google_project_iam_member" "worker_project_roles" {
   member  = "serviceAccount:${google_service_account.dataflow_worker[0].email}"
 }
 
-resource "google_pubsub_subscription_iam_member" "worker_subscriber" {
+resource "google_project_iam_member" "worker_tracking_subscription" {
   count = local.deploy ? 1 : 0
 
-  subscription = google_pubsub_subscription.dataflow[0].name
-  role         = "roles/pubsub.subscriber"
-  member       = "serviceAccount:${google_service_account.dataflow_worker[0].email}"
+  project = var.project_id
+  role    = google_project_iam_custom_role.tracking_subscription[0].name
+  member  = "serviceAccount:${google_service_account.dataflow_worker[0].email}"
+}
+
+resource "google_pubsub_topic_iam_member" "worker_tracking_topic_attachment" {
+  count = local.deploy ? 1 : 0
+
+  topic  = google_pubsub_topic.transactions[0].name
+  role   = google_project_iam_custom_role.tracking_topic_attachment[0].name
+  member = "serviceAccount:${google_service_account.dataflow_worker[0].email}"
 }
 
 resource "google_pubsub_topic_iam_member" "worker_invalid_publisher" {

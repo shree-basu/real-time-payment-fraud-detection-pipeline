@@ -7,7 +7,7 @@ import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_HALF_UP, Decimal, DecimalException, localcontext
 from typing import Any
 
 REQUIRED_FIELDS = {
@@ -20,12 +20,16 @@ REQUIRED_FIELDS = {
     "country_code",
     "is_online",
 }
-SUPPORTED_CURRENCIES = frozenset({"USD", "EUR", "GBP", "INR"})
+SUPPORTED_CURRENCIES = frozenset({"USD"})
 SUPPORTED_MERCHANT_CATEGORIES = frozenset(
     {"electronics", "grocery", "jewelry", "retail", "travel", "utilities"}
 )
 COUNTRY_CODE_PATTERN = re.compile(r"^[A-Z]{2}$")
 MAX_NUMERIC_AMOUNT = Decimal("99999999999999999999999999999.999999999")
+MIN_NUMERIC_AMOUNT = Decimal("0.000000001")
+NUMERIC_QUANTUM = Decimal("0.000000001")
+NUMERIC_PRECISION = 38
+NUMERIC_SCALE = 9
 
 
 @dataclass(frozen=True)
@@ -64,13 +68,37 @@ def parse_amount(value: Any) -> Decimal:
         raise ContractViolation("INVALID_AMOUNT", "amount must be numeric")
     try:
         amount = value if isinstance(value, Decimal) else Decimal(str(value))
-    except (InvalidOperation, TypeError, ValueError) as exc:
+    except (DecimalException, TypeError, ValueError) as exc:
         raise ContractViolation("INVALID_AMOUNT", "amount must be a finite decimal") from exc
     if not amount.is_finite() or amount <= 0:
         raise ContractViolation("INVALID_AMOUNT", "amount must be finite and greater than zero")
-    if abs(amount) > MAX_NUMERIC_AMOUNT:
+    if amount < MIN_NUMERIC_AMOUNT:
+        raise ContractViolation(
+            "INVALID_AMOUNT", "amount is below BigQuery NUMERIC minimum positive value 1e-9"
+        )
+    if amount > MAX_NUMERIC_AMOUNT:
         raise ContractViolation("INVALID_AMOUNT", "amount exceeds BigQuery NUMERIC range")
-    return amount.quantize(Decimal("0.000000001"))
+
+    digits = list(amount.as_tuple().digits)
+    exponent = amount.as_tuple().exponent
+    while exponent < 0 and digits and digits[-1] == 0:
+        digits.pop()
+        exponent += 1
+    if exponent < -NUMERIC_SCALE:
+        raise ContractViolation(
+            "INVALID_AMOUNT",
+            "amount has more than nine significant fractional digits; rounding is not allowed",
+        )
+
+    try:
+        with localcontext() as context:
+            context.prec = NUMERIC_PRECISION
+            context.rounding = ROUND_HALF_UP
+            return amount.quantize(NUMERIC_QUANTUM)
+    except DecimalException as exc:
+        raise ContractViolation(
+            "INVALID_AMOUNT", "amount cannot be represented as BigQuery NUMERIC"
+        ) from exc
 
 
 def parse_transaction(payload: bytes | str | Mapping[str, Any]) -> dict[str, Any]:
