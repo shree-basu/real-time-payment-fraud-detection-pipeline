@@ -1,34 +1,65 @@
+"""Configurable, rule-only transaction fraud scoring."""
+
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from decimal import Decimal
+
 import apache_beam as beam
-from datetime import datetime, timezone
-
-HIGH_RISK_COUNTRIES = {"NG", "RU", "CN"}
-HIGH_AMOUNT_THRESHOLD = 5000.0
-SUSPICIOUS_MERCHANTS = {"atm", "online_gaming"}
+from apache_beam.metrics import Metrics
 
 
-class DetectFraud(beam.DoFn):
-    def process(self, record):
-        signals = []
-        risk_score = 0
+@dataclass(frozen=True)
+class FraudRuleConfig:
+    high_amount_threshold: Decimal = Decimal("5000")
+    high_amount_points: int = 40
+    high_risk_country_points: int = 30
+    suspicious_online_points: int = 20
+    alert_threshold: int = 60
+    suspicious_categories: frozenset[str] = frozenset({"electronics", "jewelry", "travel"})
 
-        if record["amount"] > HIGH_AMOUNT_THRESHOLD:
-            signals.append("HIGH_AMOUNT")
-            risk_score += 40
 
-        if record["country_code"] in HIGH_RISK_COUNTRIES:
-            signals.append("HIGH_RISK_COUNTRY")
-            risk_score += 30
+def score_transaction(
+    record: dict,
+    config: FraudRuleConfig,
+    *,
+    processed_at: str | None = None,
+) -> dict:
+    score = 0
+    signals: list[str] = []
+    if record["amount"] > config.high_amount_threshold:
+        score += config.high_amount_points
+        signals.append("HIGH_AMOUNT")
+    if record["is_high_risk_country"]:
+        score += config.high_risk_country_points
+        signals.append("HIGH_RISK_COUNTRY")
+    if record["is_online"] and record["merchant_category"] in config.suspicious_categories:
+        score += config.suspicious_online_points
+        signals.append("SUSPICIOUS_ONLINE_CATEGORY")
 
-        if record["merchant_category"] in SUSPICIOUS_MERCHANTS and record["is_online"]:
-            signals.append("SUSPICIOUS_ONLINE_MERCHANT")
-            risk_score += 20
+    scored = dict(record)
+    scored.update(
+        {
+            "fraud_signals": signals,
+            "risk_score": score,
+            "is_fraud_alert": score >= config.alert_threshold,
+            "processed_at": processed_at
+            or datetime.now(UTC).isoformat(timespec="microseconds").replace("+00:00", "Z"),
+        }
+    )
+    return scored
 
-        record["fraud_signals"] = signals
-        record["risk_score"] = risk_score
-        record["is_fraud_alert"] = risk_score >= 60
-        record["processed_at"] = datetime.now(timezone.utc).isoformat()
 
-        if record["is_fraud_alert"]:
-            yield beam.pvalue.TaggedOutput("fraud", record)
-        else:
-            yield beam.pvalue.TaggedOutput("clean", record)
+class ScoreTransaction(beam.DoFn):
+    def __init__(self, config: FraudRuleConfig) -> None:
+        self.config = config
+        self.rule_alerts = Metrics.counter("fraud_pipeline", "rule_fraud_alerts")
+
+    def process(self, element: dict):
+        scored = score_transaction(element, self.config)
+        if scored["is_fraud_alert"]:
+            self.rule_alerts.inc()
+        yield scored
+
+
+# Compatibility alias for the original public module name.
+DetectFraud = ScoreTransaction
