@@ -172,6 +172,19 @@ def test_directrunner_validation_keeps_valid_and_quarantines_invalid():
         )
 
 
+def _assert_velocity_values(actual):
+    """Ignore equivalent finishing panes; TestStream below verifies pane cardinality."""
+    expected = (
+        "acct-001",
+        2,
+        Decimal("110.000000000"),
+        "1970-01-01T00:00:00.000000Z",
+        "1970-01-01T00:05:00.000000Z",
+    )
+    assert actual
+    assert set(actual) == {expected}
+
+
 def test_event_time_window_generates_velocity_alert():
     first = scored_record(transaction_id="tx-1", amount="60")
     second = scored_record(transaction_id="tx-2", amount="50")
@@ -196,20 +209,7 @@ def test_event_time_window_generates_velocity_alert():
                 )
             )
         )
-        assert_that(
-            alerts,
-            equal_to(
-                [
-                    (
-                        "acct-001",
-                        2,
-                        Decimal("110.000000000"),
-                        "1970-01-01T00:00:00.000000Z",
-                        "1970-01-01T00:05:00.000000Z",
-                    )
-                ]
-            ),
-        )
+        assert_that(alerts, _assert_velocity_values)
 
 
 def test_teststream_emits_accumulating_late_pane_and_drops_too_late_event():
