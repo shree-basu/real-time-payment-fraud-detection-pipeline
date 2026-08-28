@@ -18,7 +18,7 @@ After validation:
 2. Pure rule scoring adds a list of signals, integer score, decision, and processing time without mutating the input.
 3. Every valid scored row is normalized to the raw schema.
 4. The rule-alert subset is independently normalized to the alert schema.
-5. All scored events are keyed by account and enter event-time sliding windows for count, sum, and maximum amount. Threshold crossings produce pane-aware velocity alerts.
+5. All scored events are keyed by account and currency and enter event-time sliding windows for count, sum, and maximum amount. The current USD-only contract keeps thresholds and aggregation units defensible. Threshold crossings produce pane-aware velocity alerts.
 6. Storage Write API failed-row outputs are tagged with the destination/error and sent to a separate sink-error topic with a durable replay subscription.
 
 The rule and raw branches are not window-expiry dependent. A too-late event may be absent from velocity aggregation while still being preserved in raw history and evaluated by transaction rules.
@@ -35,6 +35,6 @@ Partition filters are required. These choices match likely investigation access 
 
 ## Runtime and infrastructure
 
-Beam 2.75.0 is packaged through standard Python project metadata. DirectRunner is the default. Dataflow requires an explicit runner, full project/region/subscription/table/bucket/worker configuration, and a confirmation token. Storage Write API is selected with exactly-once-oriented mode by default; an explicit at-least-once option is also modeled and documented.
+Beam 2.75.0 is packaged through standard Python project metadata. DirectRunner is the default. Dataflow requires an explicit runner, full project/region/subscription/table/bucket/worker configuration, and a confirmation token. Storage Write API is selected with exactly-once-oriented mode by default; sink rows use Beam-native DATE/TIMESTAMP values and the required DATE type override. Python and Terraform load the same packaged BigQuery schema files.
 
 Terraform models APIs, topics/subscriptions, dataset/tables, a protected temporary/staging bucket, worker identity, scoped access, and static Pub/Sub monitoring policies. It does not provision a continuously running Dataflow job.

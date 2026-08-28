@@ -1,7 +1,7 @@
 """Event-time sliding windows and accumulating late panes for velocity fraud."""
 
 from datetime import UTC, datetime
-from decimal import Decimal
+from decimal import Decimal, localcontext
 
 import apache_beam as beam
 from apache_beam.metrics import Metrics
@@ -16,7 +16,10 @@ class VelocityCombineFn(beam.CombineFn):
     def add_input(self, accumulator, record):
         count, total, maximum = accumulator
         amount = record["amount"]
-        return count + 1, total + amount, max(maximum, amount)
+        with localcontext() as context:
+            context.prec = 76
+            updated_total = total + amount
+        return count + 1, updated_total, max(maximum, amount)
 
     def merge_accumulators(self, accumulators):
         count = 0
@@ -24,7 +27,9 @@ class VelocityCombineFn(beam.CombineFn):
         maximum = Decimal("0")
         for item_count, item_total, item_maximum in accumulators:
             count += item_count
-            total += item_total
+            with localcontext() as context:
+                context.prec = 76
+                total += item_total
             maximum = max(maximum, item_maximum)
         return count, total, maximum
 
@@ -49,7 +54,7 @@ class FormatVelocityPane(beam.DoFn):
         beam_window=beam.DoFn.WindowParam,
         pane_info=beam.DoFn.PaneInfoParam,
     ):
-        account_id, aggregate = element
+        (account_id, currency), aggregate = element
         if (
             aggregate["transaction_count"] < self.count_threshold
             and aggregate["total_amount"] < self.amount_threshold
@@ -61,6 +66,7 @@ class FormatVelocityPane(beam.DoFn):
         timing = PaneInfoTiming.to_string(pane_info.timing)
         yield {
             "account_id": account_id,
+            "currency": currency,
             "window_start": start.isoformat(timespec="microseconds").replace("+00:00", "Z"),
             "window_end": end.isoformat(timespec="microseconds").replace("+00:00", "Z"),
             "window_date": start.date().isoformat(),
@@ -93,7 +99,8 @@ class BuildVelocityAlerts(beam.PTransform):
     def expand(self, scored):
         return (
             scored
-            | "KeyVelocityByAccount" >> beam.Map(lambda record: (record["account_id"], record))
+            | "KeyVelocityByAccountAndCurrency"
+            >> beam.Map(lambda record: ((record["account_id"], record["currency"]), record))
             | "SlidingEventTimeWindow"
             >> beam.WindowInto(
                 window.SlidingWindows(

@@ -31,12 +31,12 @@ Cloud use requires separate authorization. Before it is considered:
 2. create a small budget and billing alerts (alerts notify; they are not a hard spending cap);
 3. obtain scoped credentials outside the repository;
 4. review a saved Terraform plan;
-5. temporarily set both Terraform gates: `deployment_enabled=true` and `deployment_confirmation="DEPLOY"`;
+5. set both durable Terraform gates: `deployment_enabled=true` and `deployment_confirmation="DEPLOY"`, and keep both values unchanged for as long as Terraform manages the deployment;
 6. apply only after peer approval;
 7. launch Dataflow with `--runner=DataflowRunner`, every required project/region/subscription/table/location/service-account option, `--requirements_file=requirements-runtime-lock.txt`, `--setup_file=./setup.py`, and `--confirm_cloud_run=DATAFLOW`;
 8. record the job ID and assign an operator responsible for stopping it.
 
-The repository intentionally supplies no executable deployment workflow. Default Terraform apply manages zero resources. The example tfvars keeps both gates closed.
+The repository intentionally supplies no executable deployment workflow. Default Terraform apply manages zero resources. The example tfvars keeps both gates closed. Resource counts depend only on `deployment_enabled`; clearing only the confirmation token fails validation and cannot plan resource deletion. The artifact bucket and BigQuery dataset also use `prevent_destroy`, while BigQuery tables retain provider deletion protection.
 
 ## Stop and cleanup
 
@@ -45,12 +45,12 @@ Dataflow streaming jobs incur charges while running. Stop the job first using th
 After data retention decisions:
 
 1. export or retain required BigQuery/Pub/Sub data;
-2. remove table deletion protection only through reviewed code if table deletion is truly intended;
+2. remove table deletion protection and the bucket/dataset `prevent_destroy` blocks only through a reviewed code change if deletion is truly intended;
 3. review a Terraform destroy plan;
 4. destroy intentionally and verify Dataflow, Pub/Sub, BigQuery, GCS, monitoring, and service-account resources are gone;
 5. disable unused APIs and remove temporary credentials only after confirming no shared dependency.
 
-`force_destroy=false`, dataset content preservation, bucket soft delete, and table deletion protection intentionally make destructive cleanup require review rather than a one-command surprise.
+Never close `deployment_enabled` as a routine post-apply action: it expresses durable desired state, not a momentary confirmation. `prevent_destroy`, `force_destroy=false`, dataset content preservation, bucket soft delete, and table deletion protection intentionally make destructive cleanup require a reviewed code change rather than a one-command surprise.
 
 ## Incident triage order
 

@@ -1,0 +1,19 @@
+[
+  {"name": "transaction_id", "type": "STRING", "mode": "REQUIRED"},
+  {"name": "account_id", "type": "STRING", "mode": "REQUIRED"},
+  {"name": "amount", "type": "NUMERIC", "mode": "REQUIRED"},
+  {"name": "currency", "type": "STRING", "mode": "REQUIRED"},
+  {"name": "merchant_category", "type": "STRING", "mode": "REQUIRED"},
+  {"name": "event_timestamp", "type": "TIMESTAMP", "mode": "REQUIRED"},
+  {"name": "event_date", "type": "DATE", "mode": "REQUIRED"},
+  {"name": "country_code", "type": "STRING", "mode": "REQUIRED"},
+  {"name": "is_online", "type": "BOOLEAN", "mode": "REQUIRED"},
+  {"name": "ip_address", "type": "STRING", "mode": "NULLABLE"},
+  {"name": "hour_of_day", "type": "INTEGER", "mode": "REQUIRED"},
+  {"name": "is_high_risk_country", "type": "BOOLEAN", "mode": "REQUIRED"},
+  {"name": "has_ip_address", "type": "BOOLEAN", "mode": "REQUIRED"},
+  {"name": "fraud_signals", "type": "STRING", "mode": "REPEATED"},
+  {"name": "risk_score", "type": "INTEGER", "mode": "REQUIRED"},
+  {"name": "is_fraud_alert", "type": "BOOLEAN", "mode": "REQUIRED"},
+  {"name": "processed_at", "type": "TIMESTAMP", "mode": "REQUIRED"}
+]

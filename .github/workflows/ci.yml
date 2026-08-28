@@ -14,7 +14,11 @@ concurrency:
 
 jobs:
   quality-and-streaming-tests:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 25
     steps:
       - name: Check out repository
@@ -39,8 +43,13 @@ jobs:
           python -m ruff check pipeline simulator tests
           python -m ruff format --check pipeline simulator tests
 
-      - name: Run DirectRunner and TestStream suite
+      - name: Run full suite including cloud graph
+        if: runner.os == 'Linux'
         run: python -m pytest -q
+
+      - name: Run Windows contract, DirectRunner, and TestStream suite
+        if: runner.os == 'Windows'
+        run: python -m pytest -q -m "not cloud_graph"
 
       - name: Compile Python
         run: python -m compileall -q pipeline simulator tests
@@ -65,6 +74,8 @@ jobs:
               re.compile("google-github-actions/" + "auth"),
               re.compile("terraform" + r"\s+apply"),
               re.compile("gcloud" + r"\s+dataflow"),
+              re.compile("gcloud" + r"\s+pubsub"),
+              re.compile(r"--runner[= ]DataflowRunner"),
           ]
           hits = []
           for path in Path(".github/workflows").glob("*.y*ml"):
@@ -99,3 +110,8 @@ jobs:
 
       - name: Static validation
         run: terraform validate
+
+      - name: Prove default plan manages zero resources
+        run: |
+          terraform plan -input=false -refresh=false -lock=false -out=zero.tfplan
+          terraform show -json zero.tfplan | jq -e '.resource_changes | length == 0'
